@@ -4,10 +4,11 @@
 #include <ESP8266HTTPClient.h>
 
 //250 muestras por segundo - Señal de 40seg
+//Enviar muestras cada 15seg
 //Delay: 4ms
 //Sensores analógicos
 
-const int NUM_GENERATED_SIGNALS = 1;
+const int NUM_GENERATED_SIGNALS = 1; //45seg
 int doomsday_counter = 0;
 const int DOOMSDAY = 50;
 
@@ -16,19 +17,21 @@ const char *ssid = "wl-fmat-ccei";
 const char *password = "";
 
 //SAMPLING VARIABLES
-const int SAMPLE_PERIOD_MILLIS = 5;
+int captured_values_counter = 0;
 int captured_signals_counter = 0;
-const int SAMPLING_TIME_SEC = 20;
+const int SAMPLE_PERIOD_MILLIS = 4;
+const int SAMPLING_TIME_SEC = 45;
 const int MIN_YIELD_ITERS = 200;
 
 //STORAGE STATIC VARIABLES
 const int SD_digital_IO = 8;
 int BUFFER_SIZE = 0;
 const int MAX_MEM = 3000;
+String buffer_ = "";
 
 //SERVER VARIABLES
-const String SERVER_URL = "/samples?";
-String host = "192.168.226.192";
+const String SERVER_URL = "/sample?";
+String host = "192.168.228.87";
 const int port = 3000;
 
 void setup()
@@ -148,83 +151,42 @@ void GET(String stored_data, String is_last)
   }
 }
 
-void save_ramp_signal()
+void POST(String stored_data, String is_last)
 {
-  float window_size_millis = SAMPLING_TIME_SEC * 1000;
-  int buffer_size = int(ceil(window_size_millis / SAMPLE_PERIOD_MILLIS));
-  BUFFER_SIZE = buffer_size;
-  int spike_magnitude = 100;
-  int ramp_counter = 0;
+  HTTPClient http;
+  String server_response = "";
   int yield_counter = 0;
-  
-  File dataFile = SD.open("ECG.txt", FILE_WRITE);
-  if (dataFile.available())
+  while (true)
   {
-    for (int i = 0; i < buffer_size; ++i)
+    int begin_code = http.begin(SERVER_URL);
+    Serial.println("begin= " + String(begin_code));
+    http.addHeader("Content-Type", "text/plain");
+    int http_code = http.POST(format_request(stored_data, is_last));
+    server_response = http.getString();
+    http.end();
+    Serial.println("Server response: " + server_response);
+    if (server_response == "ok")
     {
-      ramp_counter++;
-      yield_counter++;
-      if (ramp_counter < spike_magnitude / 2)
-      {
-        dataFile.print(String(float(0)) + ",");
-      }
-      else
-      {
-        dataFile.print(String(float(ramp_counter)) + ",");
-      }
-      if (yield_counter == MIN_YIELD_ITERS)
-      {
-        yield_counter = 0;
-        yield();
-      }
-      if (ramp_counter >= spike_magnitude)
-      {
-        ramp_counter = 0;
-      }
+      break;
     }
-    dataFile.close();
-  }
-  else
-  {
-    Serial.print("Couldn't open the specified txt file");
-    hard_reset();
-  }
-}
-
-void upload_stored_data()
-{
-  //SD.begin(SD_digital_IO);
-  //File dataFile = SD.open("ECG.txt");
-  //SD.remove("ECG.txt");
-  //if (dataFile.available())
-  //{
-    String stored_data = "";
-    int send_counter = 0;
-    int yield_counter = 0;
-    for (int file_index = 0; file_index < BUFFER_SIZE; ++file_index)
+    else
     {
-      yield_counter++;
-      send_counter++;
-      stored_data = stored_data + dataFile.read();
-      if (send_counter == MAX_MEM)
-      {
-        GET(stored_data, "false");
-        stored_data = "";
-        send_counter = 0;
-      }
-      if (yield_counter == MIN_YIELD_ITERS)
-      {
-        yield_counter = 0;
-        yield();
-      }
+      Serial.println("Failed request");
+      Serial.println("Trying again...\n\n");
     }
-    GET(stored_data, "true");
-  //}
-  //else
-  //{
-    //Serial.println("Couldn't open the specified textfile!");
-  //}
-  //dataFile.close();
+    yield_counter++;
+    if (yield_counter == MIN_YIELD_ITERS)
+    {
+      yield_counter = 0;
+      yield();
+    }
+    doomsday_counter++;
+    if (doomsday_counter == DOOMSDAY)
+    {
+      hard_reset();
+    }
+  }
+  doomsday_counter = 0;
 }
 
 void hard_reset()
@@ -238,25 +200,54 @@ void hard_reset()
   ESP.reset();
 }
 
-float voltageToTemperature(float voltage){
-   return voltage * 100;
-}
-
-float convertToVoltage(int bit_value){
+float convertToVoltage(int bit_value)
+{
   int max_ = 1023;
   float volt = 3.3;
-  return (volt*bit_value)/max_;
+  return (volt * bit_value) / max_;
 }
+
+void upload_signal(int captured_value)
+{
+  if(captured_value != MAX_MEM*3)
+  {
+    GET(buffer_, "false");
+  }
+  else
+  {
+    GET(buffer_, "true");
+  }
+}
+
+void save_signal(String value_to_concatenate)
+{
+  buffer_ += value_to_concatenate + ",";
+}
+
 
 void loop()
 {
-  if (captured_signals_counter <= NUM_GENERATED_SIGNALS)
+  //250 muestras por seg.
+  if (captured_signals_counter < NUM_GENERATED_SIGNALS)
   {
-    int sensorValue = analogRead(A0);
-    Serial.print(String(voltageToTemperature(convertToVoltage(sensorValue))));
-    save_ramp_signal();
-    upload_stored_data();
-    Serial.print("Signal successfully uploaded...");
-    captured_signals_counter++;
+    int readValue = analogRead(A0);
+    String sensorValue = String(convertToVoltage(readValue));
+    captured_values_counter++;
+    save_signal(sensorValue);
+
+    if(captured_values_counter % MAX_MEM == 0)
+    {
+      if (captured_values_counter != 0)
+      {
+        upload_signal(captured_values_counter);
+        buffer_ = "";
+      }
+      
+      if (captured_values_counter == (MAX_MEM*3))
+      {
+        captured_signals_counter++;
+      }
+    }
+    delay(SAMPLE_PERIOD_MILLIS);
   }
 }
