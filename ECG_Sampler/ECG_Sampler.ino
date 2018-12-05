@@ -231,7 +231,8 @@ void loop()
   if (captured_signals_counter < NUM_GENERATED_SIGNALS)
   {
     int readValue = analogRead(A0);
-    String sensorValue = String(convertToVoltage(readValue));
+    //String sensorValue = String(convertToVoltage(readValue));
+    String sensorValue = String(readValue);
     //String sensorValue = "1";
     captured_values_counter++;
     save_signal(sensorValue);
