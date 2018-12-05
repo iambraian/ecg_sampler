@@ -8,7 +8,7 @@
 //Delay: 4ms
 //Sensores analógicos
 
-const int NUM_GENERATED_SIGNALS = 1; //45seg
+const int NUM_GENERATED_SIGNALS = 5; //45seg
 int doomsday_counter = 0;
 const int DOOMSDAY = 50;
 
@@ -230,9 +230,10 @@ void loop()
   //250 muestras por seg.
   if (captured_signals_counter < NUM_GENERATED_SIGNALS)
   {
-    int readValue = analogRead(A0);
-    //String sensorValue = String(convertToVoltage(readValue));
-    String sensorValue = String(readValue);
+    float readValue = analogRead(A0);
+    String sensorValue = String(convertToVoltage(readValue));
+    Serial.println(sensorValue);
+    //String sensorValue = String(readValue);
     //String sensorValue = "1";
     captured_values_counter++;
     save_signal(sensorValue);
@@ -248,6 +249,7 @@ void loop()
       if (captured_values_counter == (MAX_MEM*3))
       {
         captured_signals_counter++;
+        captured_values_counter = 0;
       }
     }
     delay(SAMPLE_PERIOD_MILLIS);
