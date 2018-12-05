@@ -230,9 +230,9 @@ void loop()
   //250 muestras por seg.
   if (captured_signals_counter < NUM_GENERATED_SIGNALS)
   {
-    //int readValue = analogRead(A0);
-    //String sensorValue = String(convertToVoltage(readValue));
-    String sensorValue = "1";
+    int readValue = analogRead(A0);
+    String sensorValue = String(convertToVoltage(readValue));
+    //String sensorValue = "1";
     captured_values_counter++;
     save_signal(sensorValue);
 
