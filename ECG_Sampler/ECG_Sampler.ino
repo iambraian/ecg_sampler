@@ -31,7 +31,7 @@ String buffer_ = "";
 
 //SERVER VARIABLES
 const String SERVER_URL = "/sample?";
-String host = "192.168.228.87";
+String host = "192.168.228.251";
 const int port = 3000;
 
 void setup()
