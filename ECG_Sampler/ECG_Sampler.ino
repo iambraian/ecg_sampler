@@ -8,7 +8,7 @@
 //Delay: 4ms
 //Sensores analógicos
 
-const int NUM_GENERATED_SIGNALS = 5; //45seg
+const int NUM_GENERATED_SIGNALS = 1; //45seg
 int doomsday_counter = 0;
 const int DOOMSDAY = 50;
 
@@ -200,9 +200,9 @@ void hard_reset()
   ESP.reset();
 }
 
-float convertToVoltage(int bit_value)
+float convertToVoltage(float bit_value)
 {
-  int max_ = 1023;
+  float max_ = 1023.0;
   float volt = 3.3;
   return (volt * bit_value) / max_;
 }
@@ -232,7 +232,6 @@ void loop()
   {
     float readValue = analogRead(A0);
     String sensorValue = String(convertToVoltage(readValue));
-    Serial.println(sensorValue);
     //String sensorValue = String(readValue);
     //String sensorValue = "1";
     captured_values_counter++;
@@ -249,7 +248,7 @@ void loop()
       if (captured_values_counter == (MAX_MEM*3))
       {
         captured_signals_counter++;
-        captured_values_counter = 0;
+        //captured_values_counter = 0;
       }
     }
     delay(SAMPLE_PERIOD_MILLIS);
