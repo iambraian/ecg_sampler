@@ -35,7 +35,6 @@ void setup()
 {
   Serial.begin(9600);
   begin_wifi_connection();
-
   float window_size_millis = SAMPLING_TIME_SEC * 1000;
   int buffer_size = int(ceil(window_size_millis / SAMPLE_PERIOD_MILLIS));
   BUFFER_SIZE = buffer_size;
@@ -215,6 +214,7 @@ float convertToVoltage(int bit_value)
   int max_ = 1023;
   float volt = 3.3;
   return (volt * bit_value) / max_;
+  // return (max_/volt)*bit_value;
 }
 
 void loop()
