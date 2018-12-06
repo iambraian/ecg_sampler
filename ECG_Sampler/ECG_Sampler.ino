@@ -3,12 +3,8 @@
 #include <SD.h>
 #include <ESP8266HTTPClient.h>
 
-//250 muestras por segundo - Señal de 40seg
-//Enviar muestras cada 15seg
-//Delay: 4ms
-//Sensores analógicos
-
-const int NUM_GENERATED_SIGNALS = 1; //45seg
+const int NUM_GENERATED_SIGNALS = 1;
+const int TOTAL_MESSAGES = 3;
 int doomsday_counter = 0;
 const int DOOMSDAY = 50;
 
@@ -17,6 +13,7 @@ const char *ssid = "wl-fmat-ccei";
 const char *password = "";
 
 //SAMPLING VARIABLES
+int send_counter = 0;
 int captured_values_counter = 0;
 int captured_signals_counter = 0;
 const int SAMPLE_PERIOD_MILLIS = 4;
@@ -38,6 +35,17 @@ void setup()
 {
   Serial.begin(9600);
   begin_wifi_connection();
+
+  float window_size_millis = SAMPLING_TIME_SEC * 1000;
+  int buffer_size = int(ceil(window_size_millis / SAMPLE_PERIOD_MILLIS));
+  BUFFER_SIZE = buffer_size;
+  Serial.println("MAX_MEM=" + MAX_MEM);
+  Serial.println("NUM_GENERATED_SIGNALS=" + NUM_GENERATED_SIGNALS);
+  Serial.println("SAMPLE_PERIOD_MILLIS=" + SAMPLE_PERIOD_MILLIS);
+  Serial.println("SAMPLING_TIME_SEC=" + SAMPLING_TIME_SEC);
+  Serial.println("MESSAGE_SENT_EVERY=" + +"ms");
+  Serial.println("BUFFER_SIZE=" + BUFFER_SIZE);
+  Serial.println("SERVER=" + host + ":" + port + SERVER_URL);
 }
 
 void begin_wifi_connection()
@@ -61,7 +69,7 @@ void begin_wifi_connection()
   Serial.println("WiFi conectado.");
 }
 
-String format_request(String body, String isLast)
+/* String format_request(String body, String isLast)
 {
   String request;
   char quotationMark = '"';
@@ -84,7 +92,7 @@ String format_request(String body, String isLast)
   request.concat(quotationMark);
   request.concat("}");
   return request;
-}
+} */
 
 void GET(String stored_data, String is_last)
 {
@@ -93,7 +101,6 @@ void GET(String stored_data, String is_last)
   WiFiClient client;
   while (true)
   {
-
     while (!client.connect(host, port))
     {
       Serial.println("Couldnt connect to the server");
@@ -151,44 +158,6 @@ void GET(String stored_data, String is_last)
   }
 }
 
-void POST(String stored_data, String is_last)
-{
-  HTTPClient http;
-  String server_response = "";
-  int yield_counter = 0;
-  while (true)
-  {
-    int begin_code = http.begin(SERVER_URL);
-    Serial.println("begin= " + String(begin_code));
-    http.addHeader("Content-Type", "text/plain");
-    int http_code = http.POST(format_request(stored_data, is_last));
-    server_response = http.getString();
-    http.end();
-    Serial.println("Server response: " + server_response);
-    if (server_response == "ok")
-    {
-      break;
-    }
-    else
-    {
-      Serial.println("Failed request");
-      Serial.println("Trying again...\n\n");
-    }
-    yield_counter++;
-    if (yield_counter == MIN_YIELD_ITERS)
-    {
-      yield_counter = 0;
-      yield();
-    }
-    doomsday_counter++;
-    if (doomsday_counter == DOOMSDAY)
-    {
-      hard_reset();
-    }
-  }
-  doomsday_counter = 0;
-}
-
 void hard_reset()
 {
   Serial.println('\n');
@@ -200,16 +169,9 @@ void hard_reset()
   ESP.reset();
 }
 
-float convertToVoltage(float bit_value)
+/* void upload_signal(int captured_value)
 {
-  float max_ = 1023.0;
-  float volt = 3.3;
-  return (volt * bit_value) / max_;
-}
-
-void upload_signal(int captured_value)
-{
-  if(captured_value != MAX_MEM*3)
+  if (captured_value != MAX_MEM * 3)
   {
     GET(buffer_, "false");
   }
@@ -217,26 +179,56 @@ void upload_signal(int captured_value)
   {
     GET(buffer_, "true");
   }
+} */
+
+void save_and_upload_signal(float value)
+{
+  send_counter++;
+  buffer_ = buffer_ + String(value) + ",";
+
+  if (send_counter == MAX_MEM)
+  {
+    GET(buffer_, "false");
+    buffer_ = "";
+    send_counter = 0;
+  }
+
+  if (captured_values_counter >= BUFFER_SIZE)
+  {
+    GET(buffer_, "true");
+    buffer_ = "";
+    send_counter = 0;
+    Serial.print("Signal successfully uploaded.\n");
+    captured_values_counter = 0;
+    captured_signals_counter++;
+  }
+
 }
 
-void save_signal(String value_to_concatenate)
+/* void save_signal(String value_to_concatenate)
 {
   buffer_ += value_to_concatenate + ",";
-}
+} */
 
+float convertToVoltage(int bit_value)
+{
+  int max_ = 1023;
+  float volt = 3.3;
+  return (volt * bit_value) / max_;
+}
 
 void loop()
 {
-  //250 muestras por seg.
+
   if (captured_signals_counter < NUM_GENERATED_SIGNALS)
   {
-    float readValue = analogRead(A0);
-    String sensorValue = String(convertToVoltage(readValue));
-    //String sensorValue = String(readValue);
-    //String sensorValue = "1";
+    int sensorValue = analogRead(A0);
+    //int sensorValue = convertToVoltage(sensorValue);
+    Serial.println(String(sensorValue));
     captured_values_counter++;
-    save_signal(sensorValue);
 
+    save_and_upload_signal(sensorValue);
+    /* save_signal(sensorValue);
     if(captured_values_counter % MAX_MEM == 0)
     {
       if (captured_values_counter != 0)
@@ -245,12 +237,12 @@ void loop()
         buffer_ = "";
       }
       
-      if (captured_values_counter == (MAX_MEM*3))
+      if (captured_values_counter == (MAX_MEM*TOTAL_MESSAGES))
       {
         captured_signals_counter++;
-        //captured_values_counter = 0;
+        captured_values_counter = 0;
       }
-    }
+    } */
     delay(SAMPLE_PERIOD_MILLIS);
   }
 }
