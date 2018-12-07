@@ -23,28 +23,31 @@ const int MIN_YIELD_ITERS = 200;
 //STORAGE STATIC VARIABLES
 const int SD_digital_IO = 8;
 int BUFFER_SIZE = 0;
-const int MAX_MEM = 3000;
+const int MAX_MEM = 1000;
 String buffer_ = "";
 
 //SERVER VARIABLES
 const String SERVER_URL = "/sample?";
-String host = "192.168.228.251";
+String host = "192.168.228.84";
 const int port = 3000;
+
+float window_size_millis = 0;
+int buffer_size = 0;
 
 void setup()
 {
   Serial.begin(9600);
   begin_wifi_connection();
-  float window_size_millis = SAMPLING_TIME_SEC * 1000;
-  int buffer_size = int(ceil(window_size_millis / SAMPLE_PERIOD_MILLIS));
+  window_size_millis = SAMPLING_TIME_SEC * 1000;
+  buffer_size = int(ceil(window_size_millis / SAMPLE_PERIOD_MILLIS));
   BUFFER_SIZE = buffer_size;
-  Serial.println("MAX_MEM=" + MAX_MEM);
-  Serial.println("NUM_GENERATED_SIGNALS=" + NUM_GENERATED_SIGNALS);
-  Serial.println("SAMPLE_PERIOD_MILLIS=" + SAMPLE_PERIOD_MILLIS);
-  Serial.println("SAMPLING_TIME_SEC=" + SAMPLING_TIME_SEC);
-  Serial.println("MESSAGE_SENT_EVERY=" + +"ms");
-  Serial.println("BUFFER_SIZE=" + BUFFER_SIZE);
-  Serial.println("SERVER=" + host + ":" + port + SERVER_URL);
+  //Serial.println("MAX_MEM=" + MAX_MEM);
+  //Serial.println("NUM_GENERATED_SIGNALS=" + NUM_GENERATED_SIGNALS);
+  //Serial.println("SAMPLE_PERIOD_MILLIS=" + SAMPLE_PERIOD_MILLIS);
+  //Serial.println("SAMPLING_TIME_SEC=" + SAMPLING_TIME_SEC);
+  //Serial.println("MESSAGE_SENT_EVERY=" + +"ms");
+  //Serial.println("BUFFER_SIZE=" + BUFFER_SIZE);
+  //Serial.println("SERVER=" + host + ":" + port + SERVER_URL);
 }
 
 void begin_wifi_connection()
@@ -159,12 +162,12 @@ void GET(String stored_data, String is_last)
 
 void hard_reset()
 {
-  Serial.println('\n');
-  Serial.println("Got some bad news for ya'...");
-  Serial.println("\nDoomsday counter has already ticked " + String(DOOMSDAY) + " times");
-  Serial.println("There seems to be a problem with either the WiFi connection,server connectivity or the sd module...");
-  Serial.println("\nIssuing a hard reset...");
-  Serial.println("Good Bye.");
+  //Serial.println('\n');
+  //Serial.println("Got some bad news for ya'...");
+  //Serial.println("\nDoomsday counter has already ticked " + String(DOOMSDAY) + " times");
+  //Serial.println("There seems to be a problem with either the WiFi connection,server connectivity or the sd module...");
+  //Serial.println("\nIssuing a hard reset...");
+  //Serial.println("Good Bye.");
   ESP.reset();
 }
 
@@ -213,8 +216,9 @@ float convertToVoltage(int bit_value)
 {
   int max_ = 1023;
   float volt = 3.3;
-  return (volt * bit_value) / max_;
+  //return (volt * bit_value) / max_;
   // return (max_/volt)*bit_value;
+  return bit_value * (volt / max_);
 }
 
 void loop()
