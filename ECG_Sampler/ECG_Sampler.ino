@@ -38,27 +38,23 @@ void setup()
 {
   Serial.begin(9600);
   begin_wifi_connection();
+
+  //Variables initialization
   window_size_millis = SAMPLING_TIME_SEC * 1000;
   buffer_size = int(ceil(window_size_millis / SAMPLE_PERIOD_MILLIS));
   BUFFER_SIZE = buffer_size;
-  //Serial.println("MAX_MEM=" + MAX_MEM);
-  //Serial.println("NUM_GENERATED_SIGNALS=" + NUM_GENERATED_SIGNALS);
-  //Serial.println("SAMPLE_PERIOD_MILLIS=" + SAMPLE_PERIOD_MILLIS);
-  //Serial.println("SAMPLING_TIME_SEC=" + SAMPLING_TIME_SEC);
-  //Serial.println("MESSAGE_SENT_EVERY=" + +"ms");
-  //Serial.println("BUFFER_SIZE=" + BUFFER_SIZE);
-  //Serial.println("SERVER=" + host + ":" + port + SERVER_URL);
 }
 
 void begin_wifi_connection()
 {
+  //Connects to a WiFi network (SSID was specified in variable "ssid")
   Serial.print("Conectando a ");
   Serial.println(ssid);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid);
   while (WiFi.status() != WL_CONNECTED)
   {
-    //Espera a que se conecte a Red WIFI
+    //Waits until WiFi is connected
     delay(500);
     Serial.print(".");
     doomsday_counter++;
@@ -71,33 +67,9 @@ void begin_wifi_connection()
   Serial.println("WiFi conectado.");
 }
 
-/* String format_request(String body, String isLast)
-{
-  String request;
-  char quotationMark = '"';
-  request.concat("data=");
-  request.concat("{");
-  request.concat(quotationMark);
-  request.concat("signal");
-  request.concat(quotationMark);
-  request.concat(":");
-  request.concat(quotationMark);
-  request.concat(body);
-  request.concat(quotationMark);
-  request.concat(",");
-  request.concat(quotationMark);
-  request.concat("last");
-  request.concat(quotationMark);
-  request.concat(":");
-  request.concat(quotationMark);
-  request.concat(isLast);
-  request.concat(quotationMark);
-  request.concat("}");
-  return request;
-} */
-
 void GET(String stored_data, String is_last)
 {
+  //GET Method to send data to server
   String server_response = "";
   int yield_counter = 0;
   WiFiClient client;
@@ -120,7 +92,7 @@ void GET(String stored_data, String is_last)
                  "Connection: close\r\n\r\n");
     unsigned long timeout = millis();
 
-    //Espera respuesta del servidor
+    //Waits for server response
     while (client.available() == 0)
     {
       if (yield_counter == MIN_YIELD_ITERS)
@@ -130,7 +102,7 @@ void GET(String stored_data, String is_last)
       }
     }
 
-    // Lee la respuesta del servidor y la muestra por el puerto serie
+    // Reads server response and prints it in the serial port
     while (client.available())
     {
       server_response = client.readStringUntil('\r');
@@ -162,26 +134,14 @@ void GET(String stored_data, String is_last)
 
 void hard_reset()
 {
-  //Serial.println('\n');
-  //Serial.println("Got some bad news for ya'...");
-  //Serial.println("\nDoomsday counter has already ticked " + String(DOOMSDAY) + " times");
-  //Serial.println("There seems to be a problem with either the WiFi connection,server connectivity or the sd module...");
-  //Serial.println("\nIssuing a hard reset...");
-  //Serial.println("Good Bye.");
+  Serial.println('\n');
+  Serial.println("Got some bad news for ya'...");
+  Serial.println("\nDoomsday counter has already ticked " + String(DOOMSDAY) + " times");
+  Serial.println("There seems to be a problem with either the WiFi connection,server connectivity or the sd module...");
+  Serial.println("\nIssuing a hard reset...");
+  Serial.println("Good Bye.");
   ESP.reset();
 }
-
-/* void upload_signal(int captured_value)
-{
-  if (captured_value != MAX_MEM * 3)
-  {
-    GET(buffer_, "false");
-  }
-  else
-  {
-    GET(buffer_, "true");
-  }
-} */
 
 void save_and_upload_signal(float value)
 {
@@ -190,6 +150,7 @@ void save_and_upload_signal(float value)
 
   if (send_counter == MAX_MEM)
   {
+    //Sends a message with a part of the signal (=3000 elements)
     GET(buffer_, "false");
     buffer_ = "";
     send_counter = 0;
@@ -197,6 +158,7 @@ void save_and_upload_signal(float value)
 
   if (captured_values_counter >= BUFFER_SIZE)
   {
+    //Sends the last message with the last part of the signal (<3000 elements)
     GET(buffer_, "true");
     buffer_ = "";
     send_counter = 0;
@@ -207,17 +169,12 @@ void save_and_upload_signal(float value)
 
 }
 
-/* void save_signal(String value_to_concatenate)
-{
-  buffer_ += value_to_concatenate + ",";
-} */
 
 float convertToVoltage(int bit_value)
 {
+  //Not used
   int max_ = 1023;
   float volt = 3.3;
-  //return (volt * bit_value) / max_;
-  // return (max_/volt)*bit_value;
   return bit_value * (volt / max_);
 }
 
@@ -232,21 +189,6 @@ void loop()
     captured_values_counter++;
 
     save_and_upload_signal(sensorValue);
-    /* save_signal(sensorValue);
-    if(captured_values_counter % MAX_MEM == 0)
-    {
-      if (captured_values_counter != 0)
-      {
-        upload_signal(captured_values_counter);
-        buffer_ = "";
-      }
-      
-      if (captured_values_counter == (MAX_MEM*TOTAL_MESSAGES))
-      {
-        captured_signals_counter++;
-        captured_values_counter = 0;
-      }
-    } */
     delay(SAMPLE_PERIOD_MILLIS);
   }
 }
